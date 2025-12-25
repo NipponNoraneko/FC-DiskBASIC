@@ -23,7 +23,6 @@
 	RST_FLAG = $0102
 	RST_TYPE = $0103
 	SND_CHN = $4015
-	FDS_CTRL = $4025
 
 	pNmiTrampoline =  $ed
 	_Reset = $80ba
@@ -138,14 +137,24 @@
 		.byte "D"
 
 	.segment "RESET_PATCH"
-	jsr		$d000
+		jsr		$d000
+
+	.segment "GAME_PATCH"
+		nop
+		nop
+		nop
+		rts
 
 	.segment "FDS_PATCH"
+#	.include	"fds.inc"
+
 _SetScrollDir:
-	lda		#$27
-	sta		$4025
-	jsr		$b3ab			; InitPpuApu
-	rts
+		lda		#$27
+		sta		$4025
+		jsr		$b3ab			; InitPpuApu
+		rts
+
+#	.include	"fdslib.asm"
 
 	.segment "VECTORS_PATCH"
 ; Note: IRQ handler is also bad in the original (rts x3)
