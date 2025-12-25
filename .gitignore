@@ -16,3 +16,4 @@ asm6f
 *.dbg
 *.labels.txt
 *.map.txt
+*.swp
