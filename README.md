@@ -1,4 +1,6 @@
-# Famicom Disk BASIC
+# Famicom Disk BASICv3
+
+[w.i.p.] v3始めました
 
 https://github.com/TakuikaNinja/FC-DiskBASIC
 
