@@ -2,6 +2,8 @@
 
 https://github.com/TakuikaNinja/FC-DiskBASIC
 
+お試しv3(https://github.com/NipponNoraneko/FC-DiskBASIC/tree/v3)
+
 For the older version without disk saving, see the `vol2` branch: https://github.com/TakuikaNinja/FC-DiskBASIC/tree/vol2
 
 This is an unofficial Famicom Disk System (FDS) port of Family BASIC v2.1A, originally documented as a manual process in magazines such as バックアップ活用テクニック (Backup Utilization Techniques) Part 8 and ファミコン改造マニュアル (Famicom Hacking/Modding Manual) Vol. 2 & 3. I2 would later release the Disk BASIC Generator Kit for their Souseiki Fammy to automate the process and provide additional features.
