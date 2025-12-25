@@ -146,7 +146,7 @@
 		rts
 
 	.segment "FDS_PATCH"
-#	.include	"fds.inc"
+;	.include	"fds.inc"
 
 _SetScrollDir:
 		lda		#$27
@@ -154,7 +154,7 @@ _SetScrollDir:
 		jsr		$b3ab			; InitPpuApu
 		rts
 
-#	.include	"fdslib.asm"
+;	.include	"fdslib.asm"
 
 	.segment "VECTORS_PATCH"
 ; Note: IRQ handler is also bad in the original (rts x3)
