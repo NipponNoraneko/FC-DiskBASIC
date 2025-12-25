@@ -1,4 +1,4 @@
-#[W.I.P.] Famicom Disk BASIC V3
+# [W.I.P.] Famicom Disk BASIC V3
 
 v3始めてみました
 
