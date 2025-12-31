@@ -5,14 +5,8 @@
 ; disassembled using https://www.masswerk.at/6502/disassembler.html
 ; and manually cleaned up + corrected for use with ca65
 
-	.include	"fds.inc"
-
 .enum
 	PPUADDR = $2006
-	DisPFObj = $e161
-	EnPF = $e185
-	VRAMStructWrite = $e7bb
-	SetScroll = $eaea
 .endenum
 
 l0300:    

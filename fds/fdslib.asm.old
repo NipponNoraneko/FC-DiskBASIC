@@ -1,0 +1,352 @@
+    .org    $d000
+
+	.include	"token.asm"
+
+;----- FDS zeroPage
+tempzp			=	$00
+
+;----- BASIC zeroPage
+zpPpuCtrlVal	=	$32   
+zpPpuMaskVal	=	$33
+zpCH			=	$48				; Current cursor column number
+zpCV			=	$49				; Current cursor row number 
+
+zpOutputStr     =	$52				; Pointer to null-term'd string to be queued for output
+
+;----- BASIC routine
+PrintString		=	$893c
+PrintOutBuf		=	$895d
+DoCRLF			=	$b56f
+
+
+;------------------------------------------------------------------------------
+_ResetPatch:
+		lda		#>fdsWork
+		sta		saveAddr+2
+		sta		saveAddr+5
+		lda		#<fdsWork
+		sta		saveAddr+2
+		sta		saveAddr+4
+		jsr		SaveWork
+
+		lda		NMI_FLAG
+		sta		savBasNMI_FLAG
+		lda		IRQ_FLAG
+		sta		savBasIRQ_FLAG
+		lda		RST_FLAG
+		sta		savBasRST_FLAG
+		lda		RST_TYPE
+		sta		savBasRST_TYPE
+
+
+        lda     #$27
+        sta     $4025
+        jsr     $b3ab           ; InitPpuApu
+
+        rts
+
+
+;------------------------------------------------------------------------------
+;------------------------------------------------------------------------------
+CmdFDS:
+		pha
+		cli
+		lda		zpPpuCtrlVal
+		sta		saveBasPpuCtrlVal
+		and		#$7f
+		sta		PPU_CTRL1
+
+		txa
+		pha
+		tya
+		pha
+		jsr		ChangeWorkFDS
+
+
+		jsr		ChangeWorkBASIC
+		pla
+		tay
+		pla
+		tax
+		lda		saveBasPpuCtrlVal
+		sta		PPU_CTRL1
+
+		pla
+
+		rts
+
+;------------------------------------------------------------------------------
+;------------------------------------------------------------------------------
+FDS_LIST:
+												; --- FDSスタート 頭出し
+		jsr		_HuntBlock01
+												; --- Block01読込み
+		lda     #$01
+		tay
+		sty		tempzp+2
+		sty		tempzp+3
+@LIS10:
+		jsr		XferByte
+		sta		diskHeader,y
+		iny
+		cpy		#$37
+		bne		@LIS10
+		jsr		EndOfBlockRead
+												; --- ファイル数取得
+		ldy		#00
+		lda     #$02
+		sta		listBuf,y
+		iny
+		jsr		GetNumFiles
+		lda		tempzp+6						; GetNumFilesの結果はtempzp+6に入る
+		sta		listBuf,y
+		iny
+
+@LIS15:	lda		#$FF							; 仮終了マーク $FF
+		sta		listBuf,y
+		iny
+												; --- Block03読込み
+		lda     #$03
+		jsr		CheckBlockType
+		sta		listBuf,y
+		iny
+		tya
+		pha
+		lda		#$10
+@LIS20:
+		txa
+		pha
+		jsr		XferByte
+		sta		listBuf,y
+		iny
+		pla
+		tax
+		dex
+		bne		@LIS20
+
+		inc		fileCount
+		jsr		EndOfBlockRead
+
+		tya
+		tax
+
+		pla
+		clc
+		adc		#$0D
+		tay
+		lda		listBuf,y
+		sta		block04Size
+		iny
+		lda		listBuf,y
+		sta		block04Size+1
+
+		txa
+		tay
+
+		and		#$E1
+		ora		#$0E
+		sta		PPU_CTRL2
+
+												;--- Block04読み飛ばし
+		lda		#$04
+		jsr		CheckBlockType
+@LIS30:
+		lda		block04Size
+		bne		@LIS40
+
+		lda		block04Size+1
+		beq		@LIS50
+		dec		block04Size+1
+@LIS40:
+		dec		block04Size
+		jsr		XferByte
+
+		jmp		@LIS30
+
+@LIS50:
+		jsr		EndOfBlockRead
+
+		tya
+		clc
+		adc		#$10
+		tay
+
+		jmp		@LIS15     
+
+
+
+
+_HuntBlock01:
+		jsr		WaitForReady
+		ldy		#$C5
+		jsr		Delayms
+		ldy		#$46
+		jsr		Delayms
+		lda		#$01
+		jsr		CheckBlockType
+
+		rts
+
+; ----------------------------------------------------------------------------
+_StoreBufPtrAddY:
+		tya
+		ldy		#$00
+		clc
+		adc		storePtr
+		sta		storePtr
+		lda		storePtr+1
+		adc		#$00
+		sta		storePtr+1
+		rts 
+
+lsHeader:
+		.byte	"WORK IN PROGRESS ",0
+
+
+;------------------------------------------------------------------------------
+SaveWork:
+		ldx		#$10
+Save20:
+		lda		$00,x
+		ldy		$f0,x
+saveAddr:
+		sta		fdsWork,x
+		tya
+		sta		fdsWork+$10,x
+		dex
+		bne		Save20
+
+		rts
+
+;------------------------------------------------------------------------------
+RestoreWork:
+		ldx		#$10
+Rstr20:
+rstrAddr:
+		lda		fdsWork,x
+		ldy		fdsWork,x
+		sta		$00,x
+		tya
+		sta		fdsWork+$10,x
+		dex
+		bne		Rstr20
+
+		rts
+
+;------------------------------------------------------------------------------
+ChangeWorkFDS:
+		lda		#>basWork
+		sta		saveAddr+2
+		sta		saveAddr+6
+		lda		#<basWork
+		sta		saveAddr+1
+		sta		saveAddr+5
+		jsr		SaveWork
+
+		lda		NMI_FLAG
+		sta		savBasNMI_FLAG
+		lda		IRQ_FLAG
+		sta		savBasIRQ_FLAG
+		lda		RST_FLAG
+		sta		savBasRST_FLAG
+		lda		RST_TYPE
+		sta		savBasRST_TYPE
+
+
+		lda		savNMI_FLAG
+		sta		NMI_FLAG
+		lda		savIRQ_FLAG
+		sta		IRQ_FLAG
+		lda		savRST_FLAG
+		sta		RST_FLAG
+		lda		savRST_TYPE
+		sta		RST_TYPE
+
+		lda		#>fdsWork
+		sta		rstrAddr+2
+		sta		rstrAddr+5
+		lda		#<fdsWork
+		sta		rstrAddr+1
+		sta		rstrAddr+4
+		jsr		RestoreWork
+
+		rts
+
+;------------------------------------------------------------------------------
+ChangeWorkBASIC:
+		lda		#>fdsWork
+		sta		saveAddr+2
+		sta		saveAddr+6
+		lda		#<fdsWork
+		sta		saveAddr+1
+		sta		saveAddr+5
+		jsr		SaveWork
+
+		lda		NMI_FLAG
+		sta		savNMI_FLAG
+		lda		IRQ_FLAG
+		sta		savIRQ_FLAG
+		lda		RST_FLAG
+		sta		savRST_FLAG
+		lda		RST_TYPE
+		sta		savRST_TYPE
+
+
+		lda		savBasNMI_FLAG
+		sta		NMI_FLAG
+		lda		savBasIRQ_FLAG
+		sta		IRQ_FLAG
+		lda		savBasRST_FLAG
+		sta		RST_FLAG
+		lda		savBasRST_TYPE
+		sta		RST_TYPE
+
+		lda		#>basWork
+		sta		rstrAddr+2
+		sta		rstrAddr+5
+		lda		#<basWork
+		sta		rstrAddr+1
+		sta		rstrAddr+4
+		jsr		RestoreWork
+
+		rts
+
+;------------------------------------------------------------------------------
+block04Size:
+		.res	2
+storePtr:
+		.res	2
+fileCount:
+		.res	1
+diskHeader:
+		.res	$39
+
+;--- FDS,BASIC work save Area
+		.org	$d700
+fdsWork:
+		.res	$20
+basWork:
+		.res	$20
+
+savBasNMI_FLAG:
+		.res	1
+savBasIRQ_FLAG:
+		.res	1
+savBasRST_FLAG:
+		.res	1
+savBasRST_TYPE:
+		.res	1
+
+saveBasPpuCtrlVal:
+		.res	1
+
+savNMI_FLAG:
+		.res	1
+savIRQ_FLAG:
+		.res	1
+savRST_FLAG:
+		.res	1
+savRST_TYPE:
+		.res	1
+
+listBuf:.res	$10 * 10

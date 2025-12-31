@@ -18,10 +18,6 @@
 	FILE_COUNT = 4
 	
 	PPUCTRL = $2000
-	NMI_FLAG = $0100
-	IRQ_FLAG = $0101
-	RST_FLAG = $0102
-	RST_TYPE = $0103
 	SND_CHN = $4015
 
 	pNmiTrampoline =  $ed
@@ -30,6 +26,9 @@
 .endenum
 
 	.define FILE "fbv3.nes"
+
+	.include	"nes.inc"
+	.include	"fds/fds.inc"
 
 ; ----------------------------------------------------------------------------------------------------------------------------------
 ; Disk Structure
@@ -137,24 +136,36 @@
 		.byte "D"
 
 	.segment "RESET_PATCH"
-		jsr		$d000
+		jsr		_ResetPatch
 
-	.segment "GAME_PATCH"
-		nop
-		nop
-		nop
-		rts
+	.segment "TOKEN_PATCH0"
+		.byte	<tTokenTable	
+
+	.segment "TOKEN_PATCH1"
+		.byte	>tTokenTable	
+
+	.segment "TOKEN_PATCH2"
+		.byte	<tTokenTable	
+
+	.segment "TOKEN_PATCH3"
+		.byte	>tTokenTable	
+
+	.segment "FUNCADDR_PATCH4"
+		.addr	tCommandAddr
+
+	.segment "FUNCADDR_PATCH5"
+		.addr	tCommandAddr+1
+
+	.segment "FUNCADDR_PATCH6"
+		.addr	tCommandAddr
+
+	.segment "FUNCADDR_PATCH7"
+		.addr	tCommandAddr+1
+
 
 	.segment "FDS_PATCH"
-;	.include	"fds.inc"
 
-_SetScrollDir:
-		lda		#$27
-		sta		$4025
-		jsr		$b3ab			; InitPpuApu
-		rts
-
-;	.include	"fdslib.asm"
+	.include	"fds/fdslib.asm"
 
 	.segment "VECTORS_PATCH"
 ; Note: IRQ handler is also bad in the original (rts x3)
