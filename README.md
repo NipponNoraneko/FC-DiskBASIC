@@ -1,7 +1,7 @@
 # [W.I.P.] Famicom Disk BASIC V3
 
 ### v3始めてみました
-
+-- ディスクカードへのアクセス実験中
 ##
 ![スクショ](/img/fbv3_00.png)
 
