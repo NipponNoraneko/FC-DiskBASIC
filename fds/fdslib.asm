@@ -19,7 +19,9 @@ DoCRLF			=	$b56f
 WaitForVBlank	=	$b42b
 
 TxtPtrGetCharAndIncr=	$9088
+TxtPtrIncrAndGetChar=	$9098
 TxtPtrIncr		=	$908c
+IsEndOfCmd		=	$849c
 
 
 ;------------------------------------------------------------------------------
@@ -155,8 +157,43 @@ SkipBlock04:
 
 		rts
 
+tArg:
+		.byte	$86,<FileList,>FileList			; LIST
+		.byte	$ff
+
+NoOpe:	rts
+;------------------------------------------------------------------------------
+ExprCheck:
+		ldx		#$00
+@EC02:
+		cmp		tArg,x
+		bne		@EC05
+		jsr		TxtPtrIncrAndGetChar
+		lda		tArg+1,x
+		sta		JmpPtr
+		lda		tArg+2,x
+		sta		JmpPtr+1
+		clc
+		jmp		@ECEnd
+@EC05:
+		inx
+		inx
+		inx
+		lda		tArg,x
+		cmp		#$ff
+		beq		@EC10
+		jmp		@EC02
+@EC10:
+		sec
+@ECEnd:
+		rts
+
 ;------------------------------------------------------------------------------
 CmdFDS:
+		beq		@FDSEnd
+		jsr		ExprCheck
+		bcs		@FDSEnd
+
 		ldx		#$00
 @FDS10:
 		lda		tempzp,x
@@ -167,14 +204,23 @@ CmdFDS:
 		cpx		#$10
 		bne		@FDS10
 
-;		lda		#$0e
+		lda		#$0e
+
 		lda		zpPpuMaskVal
 		sta		PPU_MASK
-		lda		#$08
+
+		lda		zpPpuCtrlVal
+		and		#$77
+		sta		PPU_CTRL_Mirror
 		sta		PPU_CTRL
 
-		jsr		FileList
 
+		lda		#>(@FDSRet-1)
+		pha
+		lda		#<(@FDSRet-1)
+		pha
+		jmp		(JmpPtr)
+@FDSRet:
 		ldx		#$00
 @FDS20:
 		lda		tempzpSav,x
@@ -191,12 +237,19 @@ CmdFDS:
 		ora		#$80
 		sta		PPU_CTRL
 
+@FDSEnd:
 		sei
+
+		rts
+
+JmpPtr:	.res	2
 
 		rts
 
 ;------------------------------------------------------------------------------
 FileList:
+		lda		#$00
+		sta		fileCnt
 ;----- Block 01
 		jsr		FDSStart
 
@@ -213,7 +266,6 @@ FileList:
 		jsr		GetNumFiles
 		ldx		tempzp+6
 		stx		fileAmount
-
 @FDS05:
 		txa
 		pha
