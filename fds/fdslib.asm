@@ -123,7 +123,9 @@ FDSStart:
 ;------------------------------------------------------------------------------
 ReadBlockNN:
 		sty		readBufPtr+1
+		sty		blk03byte+1
 		stx		readBufPtr+2
+		stx		blk03byte+2
 		jsr		CheckBlockType
 
 		ldy		#$00
@@ -166,7 +168,7 @@ tArg:
 
 NoOpe:	rts
 ;------------------------------------------------------------------------------
-ExprCheck:
+ArgCheck:
 		ldx		#$00
 @EC02:
 		cmp		tArg,x
@@ -194,7 +196,7 @@ ExprCheck:
 ;------------------------------------------------------------------------------
 CmdFDS:
 		beq		FDSEnd
-		jsr		ExprCheck
+		jsr		ArgCheck
 		bcs		FDSEnd
 
 		ldx		#$00
@@ -272,8 +274,8 @@ FileList:
 		ldy		#<block03Buf
 		jmp		@FDS09
 @FDS07:
-		ldy		readBufPtr+1
 		ldx		readBufPtr+2
+		ldy		readBufPtr+1
 @FDS09:
 		lda		#$0f
 		sta		readCnt
