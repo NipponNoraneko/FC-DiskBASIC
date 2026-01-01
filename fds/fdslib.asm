@@ -13,6 +13,8 @@ zpOutputStr     =	$52				; Pointer to null-term'd string to be queued for output
 
 ;----- BASIC routine
 PrintString		=	$893c
+QueueNullForOutput=	$894b
+QueueCharForOutput=	$894d
 PrintOutBuf		=	$895d
 InitPpuApu		=	$b3ab
 DoCRLF			=	$b56f
@@ -157,6 +159,7 @@ SkipBlock04:
 
 		rts
 
+;------------------------------------------------------------------------------
 tArg:
 		.byte	$86,<FileList,>FileList			; LIST
 		.byte	$ff
@@ -170,9 +173,9 @@ ExprCheck:
 		bne		@EC05
 		jsr		TxtPtrIncrAndGetChar
 		lda		tArg+1,x
-		sta		JmpPtr
+		sta		funcPtr+1
 		lda		tArg+2,x
-		sta		JmpPtr+1
+		sta		funcPtr+2
 		clc
 		jmp		@ECEnd
 @EC05:
@@ -190,9 +193,9 @@ ExprCheck:
 
 ;------------------------------------------------------------------------------
 CmdFDS:
-		beq		@FDSEnd
+		beq		FDSEnd
 		jsr		ExprCheck
-		bcs		@FDSEnd
+		bcs		FDSEnd
 
 		ldx		#$00
 @FDS10:
@@ -214,13 +217,8 @@ CmdFDS:
 		sta		PPU_CTRL_Mirror
 		sta		PPU_CTRL
 
+funcPtr:jsr		funcPtr
 
-		lda		#>(@FDSRet-1)
-		pha
-		lda		#<(@FDSRet-1)
-		pha
-		jmp		(JmpPtr)
-@FDSRet:
 		ldx		#$00
 @FDS20:
 		lda		tempzpSav,x
@@ -237,12 +235,12 @@ CmdFDS:
 		ora		#$80
 		sta		PPU_CTRL
 
-@FDSEnd:
-		sei
+FDSEnd:
+		;sei
+		jsr		QueueNullForOutput
+		jsr		PrintOutBuf
 
 		rts
-
-JmpPtr:	.res	2
 
 ;------------------------------------------------------------------------------
 FileList:
@@ -285,6 +283,8 @@ FileList:
 
 		inc		fileCnt
 
+		jsr		MakeFileListLine
+
 ;----- Block 04 (読み飛ばし)
 		lda		readBufPtr+1
 		sta		tempzp
@@ -305,8 +305,10 @@ FileList:
 		adc		#$10
 		bcc		@FDS15
 		inc		readBufPtr+2
+		inc		blk03byte+2
 @FDS15:
 		sta		readBufPtr+1
+		sta		blk03byte+1
 		pla
 		tax
 		dex
@@ -318,17 +320,110 @@ ErrEnd:
 		rts
 
 ;------------------------------------------------------------------------------
-readCnt:.res	2
+Bin2Hex:
+		pha
+		ror		a
+		ror		a
+		ror		a
+		ror		a
+		jsr		@B2H10
+		pla
+@B2H10:
+		and		#$0f
+		tax
+		lda		tBinHex,x
+		jsr		QueueCharForOutput
 
+		rts
+
+hexDat:	.res	2
+tBinHex:.byte	"0123456789ABCDEF"
+
+;------------------------------------------------------------------------------
+blk03byte:
+		lda		block03Buf,y
+		iny
+
+		rts
+
+;------------------------------------------------------------------------------
+MakeFileListLine:
+		ldy		#$00
+		jsr		blk03byte
+		ora		#'0'
+		jsr		QueueCharForOutput
+		lda		#' '
+		jsr		QueueCharForOutput
+		jsr		blk03byte
+		ora		#'0'
+		jsr		QueueCharForOutput
+		lda		#' '
+		jsr		QueueCharForOutput
+
+		lda		#$02
+		tay
+@MFL10:
+		jsr		blk03byte
+		jsr		QueueCharForOutput
+		cpy		#10
+		bne		@MFL10
+
+		lda		#' '
+		jsr		QueueCharForOutput
+		
+		iny
+		jsr		blk03byte
+		jsr		Bin2Hex
+		dey
+		dey
+		jsr		blk03byte
+		jsr		Bin2Hex
+
+		lda		#' '
+		jsr		QueueCharForOutput
+		
+		iny
+		iny
+		jsr		blk03byte
+		jsr		Bin2Hex
+		dey
+		dey
+		jsr		blk03byte
+		jsr		Bin2Hex
+
+		lda		#' '
+		jsr		QueueCharForOutput
+		iny
+		jsr		blk03byte
+		ora		#'0'
+		jsr		QueueCharForOutput
+
+		ldy		#$04
+@MFL20:
+		lda		#' '
+		jsr		QueueCharForOutput
+		dey
+		bne		@MFL20
+
+		rts
+
+;------------------------------------------------------------------------------
+tmpTxtBuf:
+		.res	32
+
+readCnt:.res	2
 fileCnt:.res	1
-fileAmount:
-		.res	1
+
 diskHeader:
 		.res	$39
 
 
-		.org	$d6fe
+		.org	$d6fd
+;------------------------------------------------------------------------------
+fileAmount:
+		.res	1
 bufPtr:	.res	2
+
 ;--- FDS,BASIC work save Area
 
 block03Buf:
