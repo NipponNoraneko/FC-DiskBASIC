@@ -35,7 +35,7 @@
       "actual_disk_side": "A",
       "disk_type_other": "YellowDisk",
       "disk_version": "$00",
-      "file_amount": 9,
+      "file_amount": 4,
       "files": [
         {
           "file_number": "0",
@@ -64,50 +64,10 @@
         {
           "file_number": "3",
           "file_indicate_code": "$10",
-          "file_name": "GAME0BAS",
+          "file_name": "CARDSTAT",
           "file_address": "$6000",
           "file_kind": "Program",
-          "data": "stuff/game0.bin"
-        },
-        {
-          "file_number": "4",
-          "file_indicate_code": "$11",
-          "file_name": "GAME1BAS",
-          "file_address": "$6000",
-          "file_kind": "Program",
-          "data": "stuff/game1.bin"
-        },
-        {
-          "file_number": "5",
-          "file_indicate_code": "$12",
-          "file_name": "GAME2BAS",
-          "file_address": "$6000",
-          "file_kind": "Program",
-          "data": "stuff/game2-1.bin"
-        },
-        {
-          "file_number": "6",
-          "file_indicate_code": "$12",
-          "file_name": "GAME2.BG",
-          "file_address": "$2400",
-          "file_kind": "Character",
-          "data": "stuff/game2bg.bin"
-        },
-        {
-          "file_number": "7",
-          "file_indicate_code": "$13",
-          "file_name": "GAME3BAS",
-          "file_address": "$6000",
-          "file_kind": "Program",
-          "data": "stuff/game3.bin"
-        },
-        {
-          "file_number": "8",
-          "file_indicate_code": "$14",
-          "file_name": "PAC-WRLD",
-          "file_address": "$6000",
-          "file_kind": "Program",
-          "data": "stuff/pac-wrld.prg"
+          "data": "stuff/cardstat.prg"
         }
       ]
     }
