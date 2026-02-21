@@ -64,10 +64,10 @@
         {
           "file_number": "3",
           "file_indicate_code": "$10",
-          "file_name": "CARDSTAT",
+          "file_name": "PAC-WRLD",
           "file_address": "$6000",
           "file_kind": "Program",
-          "data": "stuff/cardstat.prg"
+          "data": "stuff/pac-wrld.prg"
         }
       ]
     }
