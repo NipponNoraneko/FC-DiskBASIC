@@ -1,0 +1,570 @@
+; tab=8
+
+zEditAddr	=	zpPokeAddr		; basic zp override
+						; zpPokeAddrはPOKE以外で使われていない(多分)
+STOP_KEY	=	$03
+BS_KEY		=	$08
+CR_KEY		=	$0d
+LEFT_KEY	=	$1c
+RIGHT_KEY	=	$1d
+UP_KEY		=	$1e
+DOWN_KEY	=	$1f
+
+;------------------------------------------------------------------------------
+;	HexCharCheck:	
+;		IN:	A = Check code
+;		OUT:	CY=ON	not Hex Char
+;			  =OFF	Hex Char
+;
+HexCharCheck:
+	cmp	#'0'
+	bmi	HCCErr
+	cmp	#'G'
+	bpl	HCCErr
+
+	cmp	#':'
+	bmi	HCCEnd
+	cmp	#'A'
+	bmi	HCCErr
+HCCEnd:
+	clc
+	rts
+HCCErr:
+	sec
+	rts
+
+;------------------------------------------------------------------------------
+;	ReadAddr:	アドレス入力
+;
+ReadAddr:
+	ldx	#$00
+	stx	nibbleCnt
+	stx	readCharCnt
+	dex
+	stx	readKeyBuf
+		
+@RALoop:
+	jsr	ReadChar
+	jsr	HexCharCheck
+	bcc	@RA15					; is hex char
+
+	cmp	#BS_KEY					; Backspace
+	bne	@RA13					; no
+	lda	readCharCnt
+	beq	@RA13					; not yet entered
+	jsr	Backspace
+	dec	readCharCnt
+	jmp	@RALoop
+@RA13:
+	cmp	#CR_KEY					; CR
+	bne	@RA14
+	rts
+@RA14:
+	jsr	ShortBeep
+	jmp	@RALoop
+@RA15:
+	pha
+	jsr	PrintOneChar
+
+	inc	nibbleCnt
+	lda	#$02
+	cmp	nibbleCnt
+	bne	@RA20
+	lda	#$00
+	sta	nibbleCnt
+@RA20:
+	pla
+	ldx	readCharCnt
+	sta	readKeyBuf,x
+	inx
+
+	lda	#$ff
+	sta	readKeyBuf,x
+	stx	readCharCnt
+
+	cpx	#$04
+	bne	@RALoop
+
+	rts
+
+;--------------------------------------------------------
+readCharCnt:
+	.res		1
+readKeyBuf:
+	.res		4+1
+
+;------------------------------------------------------------------------------
+;	DumpBody:	ダンプ本体
+;
+DumpBody:
+	lda	readCharCnt
+	cmp	#$3
+	bpl	@DB05
+							; Address is lt 3digits
+	lda	binA2B
+	sta	monPtr+1
+	lda	#$00
+	sta	monPtr+2
+	beq	@DBNext
+@DB05:
+	lda	binA2B					;--- Start Address
+	sta	monPtr+2
+	lda	binA2B+1
+	sta	monPtr+1
+@DBNext:
+	lda	#$00
+	sta	zpCH
+	sta	tmpBufPos
+							;--- Header line
+	ldy	#28
+@DB10:	
+	lda	#$ed					; ─
+	cpy	#24
+	bne	@DB15
+	lda	#$EA					; ┬
+@DB15:
+	jsr	QueueCharForOutput
+	dey
+	bne	@DB10
+	jsr	PrintOutBuf
+							;--- ADDRESS
+	lda	#$00
+	tay
+@DBLoop:
+	pha
+	lda	monPtr+2
+	jsr	Bin2HexQ
+	lda	monPtr+1
+	jsr	Bin2HexQ
+							;--- DATA
+	ldy	#$00
+	lda	#$ee					; │
+	jmp	@DB60
+@DBByteLoop:
+	lda	#' '
+@DB60:
+	jsr	QueueCharForOutput
+	jsr	GetMonByte
+	jsr	Bin2HexQ
+	iny
+	cpy	#$08
+	bne	@DBByteLoop
+							;--- End 1 line
+	jsr	QueueNullForOutput
+	jsr	PrintOutBuf
+							;--- update line addr
+	lda	GetMonByte+1
+	clc
+	adc	#$08
+	bcc	@DB20
+	inc	GetMonByte+2
+@DB20:
+	sta	GetMonByte+1
+							;--- end check (16line)
+	pla
+	clc
+	adc	#1
+	cmp	#16
+	bne	@DBLoop					; not end
+
+	rts
+
+;------------------------------------------------------------------------------
+;	Dump
+;
+Dump:
+	dec	zpCH
+							;--- Put "DUMP"
+	lda	#<sDump
+	sta	zpOutputStr
+	lda	#>sDump
+	sta	zpOutputStr+1
+	jsr	PrintString
+							;--- Put " FROM:$"
+	lda	#<sFrom
+	sta	zpOutputStr
+	lda	#>sFrom
+	sta	zpOutputStr+1
+	jsr	PrintString
+							;--- アドレス入力
+	jsr	ReadAddr
+
+	lda	readCharCnt
+	beq	DumpErr					; 入力無し
+
+	jsr	DoCRLF
+
+	jsr	Asc2Bin					; アドレス変換
+	jsr	DumpBody				;
+
+	rts
+
+DumpErr:
+	jsr	DoCRLF
+	jsr	ShortBeep
+
+	rts
+
+;--------------------------------------------------------
+sDump:	.asciiz		"DUMP"
+sModify:.asciiz		"MODIFY"
+sFill:	.asciiz		"FILL"
+sFrom:	.asciiz		" FROM:$"
+sTo:	.asciiz		" TO:$"
+sVal:	.asciiz		" VAL:$"
+
+;------------------------------------------------------------------------------
+;
+GetMonByte:
+monPtr:	lda	GetMonByte,y
+
+	rts
+
+;------------------------------------------------------------------------------
+;
+ModByte:
+	jsr	HexCharCheck
+	bcs	@MBErr
+@MB02:
+	pha
+
+	lda	binA2B+1
+	sta	zEditAddr
+	lda	binA2B
+	sta	zEditAddr+1
+
+	ldx	nibbleCnt
+	bne	@MB10					; lower nibble
+							;----- upper nibble
+	ldx	#$0f
+	stx	nibbleMask
+
+	pla
+	asl	a
+	asl	a
+	bcc	@MB05
+	clc
+	adc	#$26
+@MB05:
+	asl	a
+	asl	a
+	and	#$f0
+	jmp	@MB20
+							;----- lower nibble
+@MB10:
+	dec	zpCH					; adjust H pos for HEX out
+
+	ldx	#$f0
+	stx	nibbleMask
+	pla
+	sec
+	sbc	#'0'
+	cmp	#$0a
+	bmi	@MB20
+
+	and	#$0f
+	clc
+	adc	#$09
+@MB20:
+	ldy	tmpBufPos
+	tax
+	lda	nibbleMask
+	and	(zEditAddr),y
+	sta	(zEditAddr),y
+	txa
+	ora	(zEditAddr),y
+	sta	(zEditAddr),y
+
+	jsr	Bin2HexQ
+	jsr	PrintOutBuf
+
+	jsr	MMRight
+
+	lda	tmpCV
+	sta	zpCV
+
+	rts
+@MBErr:
+	jsr	ShortBeep
+
+	rts
+
+;--------------------------------------------------------
+nibbleMask:
+	.res		1
+
+;------------------------------------------------------------------------------
+;
+ModifyMode:
+	dec	zpCH
+
+	lda	#<sModify
+	sta	zpOutputStr
+	lda	#>sModify
+	sta	zpOutputStr+1
+	jsr	PrintString
+
+	lda	zpCH
+	sta	zpCHsav
+
+	lda	zpCV
+	sta	zpCVsav
+	sec
+	sbc	#16
+	sta	zpCV
+	sta	tmpCV
+	sta	topCV
+
+	lda	#$05
+	sta	zpCH
+	sta	tmpCH
+
+	ldy	#$00
+	sty	nibbleCnt
+							;----- 
+@MMCursor:
+	jsr	ReadChar
+	cmp	#LEFT_KEY					; →
+	beq	@JMMRight
+	cmp	#'L'					; →
+	beq	@JMMRight
+
+	cmp	#RIGHT_KEY					; ←
+	beq	@JMMLeft
+	cmp	#'H'					; ←
+	beq	@JMMLeft
+
+	cmp	#UP_KEY					; ↑
+	beq	@JMMUp
+	cmp	#'K'					; ↑
+	beq	@JMMUp
+
+	cmp	#DOWN_KEY					; ↓
+	beq	@JMMDown
+	cmp	#'J'					; ↓
+	beq	@JMMDown
+
+	cmp	#'Q'
+	beq	@MMEnd					; 終了
+
+	jsr	ModByte
+	jmp	@MMCursor
+@MMEnd:
+	lda	zpCVsav
+	sta	zpCV
+	lda	zpCHsav
+	sta	zpCH
+
+	rts
+
+;--------------------------------------------------------
+@JMMRight:
+	jsr	MMRight
+	jmp	@MMCursor
+@JMMLeft:
+	jsr	MMLeft
+	jmp	@MMCursor
+@JMMDown:
+	jsr	MMDown
+	jmp	@MMCursor
+@JMMUp:
+	jsr	MMUp
+	jmp	@MMCursor
+
+;------------------------------------------------------------------------------
+;
+MMLeft:
+	ldx	tmpCH
+	dex
+	cpx	#$05
+	bmi	@MML10
+
+	stx	tmpCH
+	stx	zpCH
+
+	dec	nibbleCnt
+	bmi	@MML05
+		
+	rts
+
+@MML05:
+	lda	#$02
+	sta	nibbleCnt
+	dec	tmpBufPos
+
+	jsr	MMLeft
+
+	rts
+
+@MML10:
+	lda	#01
+	sta	nibbleCnt
+
+	lda	#27
+	sta	tmpCH
+	sta	zpCH
+
+	lda	tmpBufPos
+	clc
+	adc	#$08-1
+	sta	tmpBufPos
+
+	jsr	MMUp
+
+	rts
+
+;------------------------------------------------------------------------------
+;
+MMRight:
+	ldx	tmpCH
+	inx
+	cpx	#28
+	beq	MMRNextLine
+	bpl	MMErr
+
+	stx	zpCH
+	stx	tmpCH
+
+	inc	nibbleCnt
+	ldx	#$02
+	cpx	nibbleCnt
+	beq	@MMR10
+
+	rts
+@MMR10:
+	ldx	#$ff
+	stx	nibbleCnt
+
+	inc	tmpBufPos
+		
+	jsr	MMRight
+
+	rts
+
+MMRNextLine:
+							;--- to next line head
+	lda	#$00
+	sta	nibbleCnt
+
+	lda	#$05
+	sta	tmpCH
+	sta	zpCH
+
+	jsr	MMDown
+
+	lda	tmpBufPos
+	sec
+	sbc	#$07
+	sta	tmpBufPos
+
+	rts
+
+;------------------------------------------------------------------------------
+MMUp:
+	ldx	tmpCV
+	dex
+	cpx	topCV
+	bmi	MMErr
+	stx	zpCV
+	stx	tmpCV
+		
+	lda	tmpBufPos
+	sec
+	sbc	#$08
+	sta	tmpBufPos
+
+	rts
+		
+;------------------------------------------------------------------------------
+MMDown:
+	ldx	tmpCV
+	inx
+	cpx	zpCVsav
+	bpl	MMErr
+
+	stx	zpCV
+	stx	tmpCV
+		
+	lda	tmpBufPos
+	clc
+	adc	#$08
+	sta	tmpBufPos
+
+	rts
+
+;--------------------------------------------------------
+MMErr:
+	jsr	ShortBeep				; short BEEP
+
+	rts
+
+;--------------------------------------------------------
+tmpCV:	.res	1
+tmpCH:	.res	1
+topCV:	.res	1
+topCH:	.res	1
+nibbleCnt:
+	.res	1
+
+;------------------------------------------------------------------------------
+;
+MonPrompt:
+	jsr	DoCRLF
+MP05:
+	lda	#$b3					; prompt char '['
+	jsr	PrintOneChar
+@MPLoop:
+	jsr	ReadChar
+	pha
+	jsr	PrintOneChar				; key echo
+	pla
+
+.ifdef	aaaa
+	cmp	#' '
+	beq	@CMNext
+	cmp	#DOWN_KEY					; ↓
+	beq	@CMNext
+	cmp	#UP_KEY					; ↑
+.endif
+
+	cmp	#CR_KEY
+	beq	MonPrompt
+@MP10:
+	cmp	#'D'					; Dump
+	bne	@MP20
+	jsr	Dump
+	jmp	MP05
+@MP20:
+	cmp	#'M'					; Modify
+	bne	@MP30
+	jsr	ModifyMode
+	jmp	MonPrompt
+@MP30:
+	cmp	#'F'					; Fill
+
+	cmp	#STOP_KEY
+	beq	@MPEnd					; STOP_KEY key
+
+	cmp	#'Q'					; Quit
+	bne	MonPrompt
+@MPEnd:
+
+	sec
+	rts
+
+;------------------------------------------------------------------------------
+CmdMON:
+	jsr	MP05
+	bcc	CmdMON
+
+	jsr	TxtPtrIncr
+
+	rts
+
+;--------------------------------------------------------
+tmpBufPos:
+	.res	1
+zpCHsav:
+	.res	1
+zpCVsav:
+	.res	1

@@ -1,0 +1,115 @@
+{
+  "sides": [
+    {
+      "licensee_code": "$00",
+      "game_name": "BAS",
+      "game_type": " ",
+      "game_version": "3",
+      "disk_side": "A",
+      "disk_number": "0",
+      "disk_type": "FMS",
+      "unknown01": "$00",
+      "boot_file": "15",
+      "unknown02": "$FF",
+      "unknown03": "$FF",
+      "unknown04": "$FF",
+      "unknown05": "$FF",
+      "unknown06": "$FF",
+      "manufacturing_date": "1986-11-27T00:00:00",
+      "country_code": "Japan",
+      "unknown07": "$61",
+      "unknown08": "$00",
+      "unknown09": "$00",
+      "unknown10": "$02",
+      "unknown11": "$00",
+      "unknown12": "$5A",
+      "unknown13": "$00",
+      "unknown14": "$73",
+      "unknown15": "$00",
+      "rewritten_date": "1986-11-27T00:00:00",
+      "unknown16": "$FF",
+      "unknown17": "$FF",
+      "disk_writer_serial_number": "$FFFF",
+      "unknown18": "$FF",
+      "disk_rewrite_count": "0",
+      "actual_disk_side": "A",
+      "disk_type_other": "YellowDisk",
+      "disk_version": "$00",
+      "file_amount": 9,
+      "files": [
+        {
+          "file_number": "0",
+          "file_indicate_code": "0",
+          "file_name": "BASIC-V3",
+          "file_address": "$8000",
+          "file_kind": "Program",
+          "data": "stuff/fbv3d.bin"
+        },
+        {
+          "file_number": "1",
+          "file_indicate_code": "1",
+          "file_name": "CHAR-ROM",
+          "file_address": "$0000",
+          "file_kind": "Character",
+          "data": "stuff/char-rom.chr"
+        },
+        {
+          "file_number": "2",
+          "file_indicate_code": "2",
+          "file_name": "PPU-2000",
+          "file_address": "$2000",
+          "file_kind": "Program",
+          "data": "stuff/ppu2000.bin"
+        },
+        {
+          "file_number": "3",
+          "file_indicate_code": "$10",
+          "file_name": "GAME0BAS",
+          "file_address": "$6000",
+          "file_kind": "Program",
+          "data": "stuff/game0.bin"
+        },
+        {
+          "file_number": "4",
+          "file_indicate_code": "$11",
+          "file_name": "GAME1BAS",
+          "file_address": "$6000",
+          "file_kind": "Program",
+          "data": "stuff/game1.bin"
+        },
+        {
+          "file_number": "5",
+          "file_indicate_code": "$12",
+          "file_name": "GAME2BAS",
+          "file_address": "$6000",
+          "file_kind": "Program",
+          "data": "stuff/game2-1.bin"
+        },
+        {
+          "file_number": "6",
+          "file_indicate_code": "$12",
+          "file_name": "GAME2.BG",
+          "file_address": "$2400",
+          "file_kind": "Character",
+          "data": "stuff/game2bg.bin"
+        },
+        {
+          "file_number": "7",
+          "file_indicate_code": "$13",
+          "file_name": "GAME3BAS",
+          "file_address": "$6000",
+          "file_kind": "Program",
+          "data": "stuff/game3.bin"
+        },
+        {
+          "file_number": "8",
+          "file_indicate_code": "$14",
+          "file_name": "PAC-WRLD",
+          "file_address": "$6000",
+          "file_kind": "Program",
+          "data": "stuff/pac-wrld.prg"
+        }
+      ]
+    }
+  ]
+}
