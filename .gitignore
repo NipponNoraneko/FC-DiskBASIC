@@ -14,6 +14,7 @@ asm6f
 *.prg
 *.o
 *.dbg
-*.labels.txt
-*.map.txt
+*.lbl
+*.map
 *.swp
+*.sav
